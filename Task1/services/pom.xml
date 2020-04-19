@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">    
+	<modelVersion>4.0.0</modelVersion>
     
     <!-- parent pom -->
     <parent>
@@ -11,7 +11,6 @@
     </parent>  
   
     <!-- services pom -->
-    <modelVersion>4.0.0</modelVersion>
     <groupId>com.builders.services</groupId>
     <artifactId>services</artifactId>
     <version>1.0.0</version>
@@ -19,22 +18,39 @@
     <packaging>jar</packaging>
 	
 	<dependencies>
-        <dependency>
+        <!-- module utils -->
+		<dependency>
             <groupId>com.builders.utils</groupId>
             <artifactId>utils</artifactId>
             <version>1.0.0</version>
         </dependency>
+		<!-- unit test -->
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.13</version>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.apache.maven.plugins</groupId>
-			<artifactId>maven-war-plugin</artifactId>
-			<version>3.2.3</version>
-		</dependency>
-    </dependencies>
-  
+    </dependencies> 
+
+    <build>
+        <finalName>java-jar-services-jar-with-dependencies</finalName>
+        <plugins>
+		    <!-- jar -->
+            <plugin>
+			  <groupId>org.apache.maven.plugins</groupId>
+			  <artifactId>maven-jar-plugin</artifactId>
+			  <version>3.1.0</version>
+			  <configuration>
+				<archive>
+				  <manifest>
+					<addClasspath>true</addClasspath>
+					<classpathPrefix>lib/</classpathPrefix>
+					<mainClass>com.builders.services.BuilderService</mainClass>
+				  </manifest>
+				</archive>
+			  </configuration>
+			</plugin>
+        </plugins>
+    </build>	
 </project>

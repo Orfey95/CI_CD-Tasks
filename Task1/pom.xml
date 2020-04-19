@@ -3,28 +3,28 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">    
 	<modelVersion>4.0.0</modelVersion>
 	
-    <groupId>com.builders.main</groupId>
-    <artifactId>builders</artifactId>
-    <version>1.0.0</version>
-    <name>MultiModule application</name>
+	<groupId>com.builders.main</groupId>
+	<artifactId>builders</artifactId>
+	<version>1.0.0</version>
+	<name>MultiModule application</name>
 	<packaging>pom</packaging>
   
-    <properties>
-        <java.version>1.8</java.version>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <junit.jupiter.version>5.5.2</junit.jupiter.version>
-    </properties>
+	<properties>
+		<java.version>1.8</java.version>
+		<maven.compiler.source>1.8</maven.compiler.source>
+		<maven.compiler.target>1.8</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<junit.jupiter.version>5.5.2</junit.jupiter.version>
+	</properties>
   
-    <!-- sub modules -->
-    <modules>
-        <module>admin</module>
-        <module>web</module>
-        <module>services</module>
-        <module>utils</module>
-    </modules>
+	<!-- sub modules -->
+	<modules>
+		<module>admin</module>
+		<module>web</module>
+		<module>services</module>
+		<module>utils</module>
+	</modules>
 		
 	<build>
 		<plugins>
@@ -36,16 +36,16 @@
 			</plugin>
 			<!-- Tests -->
 			<plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0-M4</version>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.0.0-M4</version>
 			</plugin> 
 			<!-- Dependency -->
 			<plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.1.2</version>
-            </plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>3.1.2</version>
+			</plugin>
 			<!-- Display dependency updates -->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>

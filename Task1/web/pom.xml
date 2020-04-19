@@ -3,27 +3,27 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">    
 	<modelVersion>4.0.0</modelVersion>
 
-    <!-- parent pom -->
-    <parent>
-        <groupId>com.builders.main</groupId>
-        <artifactId>builders</artifactId>
-        <version>1.0.0</version>
-    </parent>  
+	<!-- parent pom -->
+	<parent>
+		<groupId>com.builders.main</groupId>
+		<artifactId>builders</artifactId>
+		<version>1.0.0</version>
+	</parent>  
   
-    <!-- web pom -->
-    <groupId>com.builders.web</groupId>
-    <artifactId>web</artifactId>
-    <version>1.0.0</version>
-    <name>web</name>
+	<!-- web pom -->
+	<groupId>com.builders.web</groupId>
+	<artifactId>web</artifactId>
+	<version>1.0.0</version>
+	<name>web</name>
 	<packaging>war</packaging>
 	
 	<dependencies>	
 		<!-- module services -->
 		<dependency>
-            <groupId>com.builders.services</groupId>
-            <artifactId>services</artifactId>
-            <version>1.0.0</version>
-        </dependency>
+			<groupId>com.builders.services</groupId>
+			<artifactId>services</artifactId>
+			<version>1.0.0</version>
+		</dependency>
 		<!-- servlet api -->
 		<dependency>
 			<groupId>javax.servlet</groupId>
@@ -41,20 +41,20 @@
 	</dependencies>  
 	
 	<build>
-        <finalName>java-war-project</finalName>
-        <plugins>
-		    <!-- jetty -->
+		<finalName>java-war-project</finalName>
+		<plugins>
+			<!-- jetty -->
 			<plugin>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-maven-plugin</artifactId>
-                <version>9.4.12.v20180830</version>
-            </plugin>
-		    <!-- war -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-war-plugin</artifactId>
-                <version>3.2.3</version>
-            </plugin>
-        </plugins>
-    </build>
+				<groupId>org.eclipse.jetty</groupId>
+				<artifactId>jetty-maven-plugin</artifactId>
+				<version>9.4.12.v20180830</version>
+			</plugin>
+			<!-- war -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-war-plugin</artifactId>
+				<version>3.2.3</version>
+			</plugin>
+		</plugins>
+	</build>
 </project>

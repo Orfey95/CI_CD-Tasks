@@ -1,0 +1,40 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    
+    <!-- parent pom -->
+    <parent>
+        <groupId>com.builders.main</groupId>
+        <artifactId>builders</artifactId>
+        <version>1.0.0</version>
+    </parent>  
+  
+    <!-- admin pom -->
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.builders.admin</groupId>
+    <artifactId>admin</artifactId>
+    <version>1.0.0</version>
+    <name>admin</name>
+    <packaging>jar</packaging>
+	
+	<dependencies>
+        <dependency>
+            <groupId>com.builders.services</groupId>
+            <artifactId>services</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+		<dependency>
+            <groupId>com.builders.utils</groupId>
+            <artifactId>utils</artifactId>
+            <version>1.0.0</version>
+        </dependency>	
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.13</version>
+			<scope>test</scope>
+		</dependency>	
+    </dependencies>	
+  
+</project>

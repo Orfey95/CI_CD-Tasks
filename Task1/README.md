@@ -1,3 +1,4 @@
+## Build automation tool
 There is a multi-module project with the following structure: 
 ```
 jar <--admin \ 

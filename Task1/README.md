@@ -13,7 +13,7 @@ mvn package
 ```
 - Location of the final (admin) jar file:
 ```
-/builders/admin/target
+/admin/target
 ```
 - Name of the final (admin) jar file:
 ```
@@ -25,7 +25,7 @@ java -jar java-jar-project-jar-with-dependencies.jar <WORD>
 ```
 - Result of the final (admin) jar file:
 ```
-vagrant@EPUAKHAWO13DT28:~/builders/admin/target$ java -jar java-jar-project-jar-with-dependencies.jar Hello
+vagrant@EPUAKHAWO13DT28:~/admin/target$ java -jar java-jar-project-jar-with-dependencies.jar Hello
 You say [Hello], I say Hello from admin! Hello from services! Hello from utils!
 ```
 2) WAR
@@ -35,7 +35,7 @@ mvn package
 ```
 - Location of the final (web) war file:
 ```
-/builders/web/target
+/web/target
 ```
 - Name of the final (web) war file:
 ```

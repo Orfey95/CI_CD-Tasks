@@ -22,46 +22,21 @@
 		<dependency>
 			<groupId>com.builders.services</groupId>
 			<artifactId>services</artifactId>
-			<version>1.0.0</version>
 		</dependency>
-		<!-- module utils -->
-		<dependency>
-			<groupId>com.builders.utils</groupId>
-			<artifactId>utils</artifactId>
-			<version>1.0.0</version>
-		</dependency>	
 		<!-- unit test -->
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>4.13</version>
-			<scope>test</scope>
 		</dependency>	
 	</dependencies>	 
 	
 	<build>
 		<finalName>java-jar-project</finalName>
 		<plugins>
-			<!-- jar -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-jar-plugin</artifactId>
-				<version>3.1.0</version>
-				<configuration>
-					<archive>
-						<manifest>
-							<addClasspath>true</addClasspath>
-							<classpathPrefix>lib/</classpathPrefix>
-							<mainClass>com.builders.admin.AdminEntryPoint</mainClass>
-						</manifest>
-					</archive>
-				</configuration>
-			</plugin>
 			<!-- multi module jar -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
-				<version>3.1.0</version>
 				<configuration>
 					<descriptorRefs>
 						<descriptorRef>jar-with-dependencies</descriptorRef>

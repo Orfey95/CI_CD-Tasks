@@ -1,0 +1,78 @@
+#!groovy
+pipeline {
+	agent {  label 'node2' }
+	tools {
+		jdk 'openjdk-11'
+	}
+	environment {
+		BUILDTIME = "${sh(script:'date "+%Y-%m-%d %H:%M:%S"', returnStdout: true).trim()}"
+		IMAGE = readMavenPom().getArtifactId()
+		VERSION = readMavenPom().getVersion()
+
+	}
+	stages { 
+		// Build Name
+		stage("Set Build Name") {
+			steps {
+				buildName "${env.BUILDTIME}_build#${env.BUILD_NUMBER}_${env.IMAGE}_${env.VERSION}_deploy"
+			}			
+		}
+		// Copy Artifact from build job
+		stage('Copy Artifact') {
+			steps {
+				script {
+					step ([$class: 'CopyArtifact',
+					projectName: 'projectone_pet_clinic_build',
+					filter: "**/target/*.jar",
+					target: 'Artifact']);
+				}
+			}
+		}
+		// Create Docker image
+		stage('Create Docker image') {
+			steps {
+				dir ('dockerfiles') {
+				    sh 'cp ../Artifact/target/*.jar .'
+				    sh 'docker build -f Dockerfile -t petclinic:$BUILD_NUMBER .'
+				}
+			}
+		}
+		// Remove old Docker image
+		stage('Remove old Docker image') {
+			steps {
+				sh '''
+				if [ ! -z $(docker images -q petclinic:$(echo $BUILD_NUMBER-2 | bc)) ]; then 
+					docker rmi petclinic:$(echo $BUILD_NUMBER-2 | bc) 
+				fi
+				'''
+			}
+		}
+		// Stop and remove old Docker container
+		stage('Stop and remove old Docker container') {
+			steps {
+				sh '''
+				if [ "$(docker ps -aq -f name=petclinic$)" ]; then 
+					docker stop petclinic && docker rm petclinic 
+				fi
+				'''
+			}
+		}
+		// Run Docker image
+		stage('Run Docker image') {
+			steps {
+				sh 'docker run -d -p 8080:8080 --name petclinic petclinic:$BUILD_NUMBER'
+			}
+		}
+	}
+	post {
+		always {
+			// Email notification
+			emailext (
+				from: "jenkins.auto.mail.notification@gmail.com",
+				to: "sasha7692@gmail.com",
+				subject: "Job '${env.JOB_NAME}' '${env.BUILD_NUMBER}'", 
+				body: """Build status is '${currentBuild.currentResult}'.\nYou can visit petclinic by link: http://35.188.213.22:8080/"""
+			)	 
+		}
+	}
+}

@@ -1,19 +1,24 @@
 #!groovy
 pipeline {
 	agent {  label 'node1' }
+	options {
+		copyArtifactPermission('projectone_pet_clinic_deploy');
+	}
 	tools {
 		jdk 'openjdk-11'
 		maven 'my-maven'
 	}
 	environment {
 		BUILDTIME = "${sh(script:'date "+%Y-%m-%d %H:%M:%S"', returnStdout: true).trim()}"
-		VERSION = "1.0-SNAPSHOT"
+		IMAGE = readMavenPom().getArtifactId()
+		VERSION = readMavenPom().getVersion()
+
 	}
 	stages { 
 		// Build Name
 		stage("Set Build Name") {
 			steps {
-				buildName "${env.BUILDTIME}_build#${env.BUILD_NUMBER}_${env.JOB_NAME}_${env.VERSION}"
+				buildName "${env.BUILDTIME}_build#${env.BUILD_NUMBER}_${env.IMAGE}_${env.VERSION}_build"
 			}			
 		}
 		// Maven
@@ -77,6 +82,10 @@ pipeline {
 		}
 	}
 	post {
+		success {
+			// Create Archive
+			archiveArtifacts artifacts: 'target/*.jar'
+		}
 		always {
 			// Email notification
 			emailext (

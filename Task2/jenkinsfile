@@ -4,29 +4,61 @@ pipeline {
 	options {
 		copyArtifactPermission('projectone_pet_clinic_deploy');
 	}
+	parameters {
+		// Choice of GIT branch parameter
+		gitParameter branchFilter: 'origin/(.*)', defaultValue: 'master', name: 'BRANCH', type: 'PT_BRANCH'
+		// Choice of DB for Parameterized Trigger plugin
+		choice(name: 'DATA_BASE', choices: "H2\nMySQL", description: 'Data base')
+	}
 	tools {
 		jdk 'openjdk-11'
 		maven 'my-maven'
 	}
 	environment {
 		BUILDTIME = "${sh(script:'date "+%Y-%m-%d %H:%M:%S"', returnStdout: true).trim()}"
-		IMAGE = readMavenPom().getArtifactId()
+		APP_NAME = readMavenPom().getArtifactId()
 		VERSION = readMavenPom().getVersion()
-
 	}
 	stages { 
+		// Print pipeline parameters
+		stage("Print pipeline parameters") {
+			steps {
+				sh """
+				echo "Data base: ${params.DATA_BASE}"
+				echo "GIT branch: ${params.BRANCH}"
+				echo "Turn on/off Maven CheckStyle plugin: ${params.SKIP_CHECKSTYLE}"
+				echo "Turn on/off Maven unit tests: ${params.SKIP_TESTS}"				
+				echo "Sonar Quality Gate wait time (minutes): ${params.SONAR_QG_TIME_WAIT}"
+				"""
+			}			
+		}
+		// Set git parameters
+		stage("Set git") {
+			steps {
+				git branch: "${params.BRANCH}", credentialsId: 'jenkins-host-private-key', url: 'git@git.epam.com:oleksandr_frolov/spring-petclinic.git'
+			}
+		}
 		// Build Name
 		stage("Set Build Name") {
 			steps {
-				buildName "${env.BUILDTIME}_build#${env.BUILD_NUMBER}_${env.IMAGE}_${env.VERSION}_build"
+				buildName "${env.BUILDTIME}_build#${env.BUILD_NUMBER}_${env.APP_NAME}_${env.VERSION}_build"
 			}			
 		}
 		// Maven
 		stage("Maven package") {
 			steps {
-				withSonarQubeEnv('my-sonar') {
-					sh 'mvn clean package -Dcheckstyle.skip'
-				}	
+				script {
+					if ("${params.SKIP_CHECKSTYLE}" == "true") {
+						withSonarQubeEnv('my-sonar') {
+							sh "mvn clean package -Dcheckstyle.skip -Dmaven.test.skip=${params.SKIP_TESTS}"
+						}	
+					} 
+					else {
+						withSonarQubeEnv('my-sonar') {
+							sh "mvn clean package -Dmaven.test.skip=${params.SKIP_TESTS}"
+						}
+					}
+				}
 			}			
 		}
 		// Sonar
@@ -46,7 +78,7 @@ pipeline {
 		}
 		stage("Sonar Quality Gate") {
 			steps {
-				timeout(time: 2, unit: 'MINUTES') {
+				timeout(time: "${params.SONAR_QG_TIME_WAIT}", unit: 'MINUTES') {
 					waitForQualityGate abortPipeline: true
 				}
 			}
@@ -54,11 +86,6 @@ pipeline {
 		// Artifactory
 		stage('Artifactory configuration') {
 			steps {
-				rtServer (
-					id: "my-artifactory",
-					url: "http://34.107.78.31:8081/artifactory",
-					credentialsId: "artifactory"
-				)
 				rtMavenDeployer (
 					id: "my-maven",
 					serverId: "my-artifactory",
@@ -66,11 +93,22 @@ pipeline {
 					snapshotRepo: "PetClinicRep",
 					includePatterns: ["*.jar", "*.war"]
 				)
-				rtMavenRun (
-					goals: "clean install -Dcheckstyle.skip -Dmaven.test.skip=true",
-					pom: "pom.xml",
-					deployerId: "my-maven"
-				)			
+				script {
+					if ("${params.SKIP_CHECKSTYLE}" == "true") {
+						rtMavenRun (
+							goals: "clean install -Dcheckstyle.skip -Dmaven.test.skip=${params.SKIP_TESTS}",
+							pom: "pom.xml",
+							deployerId: "my-maven"
+						)	
+					} 
+					else {
+						rtMavenRun (
+							goals: "clean install -Dmaven.test.skip=${params.SKIP_TESTS}",
+							pom: "pom.xml",
+							deployerId: "my-maven"
+						)
+					}
+				}							
 			} 				  				  
 		}
 		stage('Publish to Artifactory') {
@@ -85,6 +123,8 @@ pipeline {
 		success {
 			// Create Archive
 			archiveArtifacts artifacts: 'target/*.jar'
+			// Run projectone_pet_clinic_deploy job by Parameterized Trigger plugin
+			build job: 'projectone_pet_clinic_deploy', wait: false, parameters: [string(name: 'DATA_BASE', value: String.valueOf(DATA_BASE))]
 		}
 		always {
 			// Email notification

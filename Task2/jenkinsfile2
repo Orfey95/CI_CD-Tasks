@@ -1,20 +1,22 @@
 #!groovy
 pipeline {
 	agent {  label 'node2' }
+	parameters {
+		string(name: 'DATA_BASE')
+	}
 	tools {
 		jdk 'openjdk-11'
 	}
 	environment {
 		BUILDTIME = "${sh(script:'date "+%Y-%m-%d %H:%M:%S"', returnStdout: true).trim()}"
-		IMAGE = readMavenPom().getArtifactId()
+		APP_NAME = readMavenPom().getArtifactId()
 		VERSION = readMavenPom().getVersion()
-
 	}
 	stages { 
 		// Build Name
 		stage("Set Build Name") {
 			steps {
-				buildName "${env.BUILDTIME}_build#${env.BUILD_NUMBER}_${env.IMAGE}_${env.VERSION}_deploy"
+				buildName "${env.BUILDTIME}_build#${env.BUILD_NUMBER}_${env.APP_NAME}_${env.VERSION}_deploy"
 			}			
 		}
 		// Copy Artifact from build job
@@ -33,7 +35,7 @@ pipeline {
 			steps {
 				dir ('dockerfiles') {
 				    sh 'cp ../Artifact/target/*.jar .'
-				    sh 'docker build -f Dockerfile -t petclinic:$BUILD_NUMBER .'
+				    sh "docker build -f Dockerfile_${DATA_BASE} -t petclinic:$BUILD_NUMBER ."
 				}
 			}
 		}

@@ -1,0 +1,17 @@
+FROM java:8-jdk-alpine
+LABEL MAINTAINER="Oleksandr Frolov"
+
+# Copy artifact
+COPY *.jar /usr/app/
+
+# Declaration of workdir
+WORKDIR /usr/app
+
+# Install mysql-client
+RUN apk add --no-cache mysql-client
+
+# Port usage
+EXPOSE 8080
+
+# Run artifact
+ENTRYPOINT ["/bin/sh", "-c", "java -jar -Dspring.profiles.active=mysql -Dspring.datasource.url=jdbc:mysql://35.188.213.22:3306/petclinic /usr/app/*.jar"]

@@ -1,0 +1,14 @@
+FROM java:8-jdk-alpine
+LABEL MAINTAINER="Oleksandr Frolov"
+
+# Copy artifact
+COPY *.jar /usr/app/
+
+# Declaration of workdir
+WORKDIR /usr/app
+
+# Port usage
+EXPOSE 8080
+
+# Run artifact
+ENTRYPOINT ["/bin/sh", "-c", "java -jar /usr/app/*.jar"]

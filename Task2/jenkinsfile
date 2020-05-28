@@ -1,139 +1,146 @@
 #!groovy
 pipeline {
-	agent {  label 'node1' }
-	options {
-		copyArtifactPermission('projectone_pet_clinic_deploy');
-	}
-	parameters {
-		// Choice of GIT branch parameter
-		gitParameter branchFilter: 'origin/(.*)', defaultValue: 'master', name: 'BRANCH', type: 'PT_BRANCH'
-		// Choice of DB for Parameterized Trigger plugin
-		choice(name: 'DATA_BASE', choices: "H2\nMySQL", description: 'Data base')
-	}
-	tools {
-		jdk 'openjdk-11'
-		maven 'my-maven'
-	}
-	environment {
-		BUILDTIME = "${sh(script:'date "+%Y-%m-%d %H:%M:%S"', returnStdout: true).trim()}"
-		APP_NAME = readMavenPom().getArtifactId()
-		VERSION = readMavenPom().getVersion()
-	}
-	stages { 
-		// Print pipeline parameters
-		stage("Print pipeline parameters") {
-			steps {
-				sh """
-				echo "Data base: ${params.DATA_BASE}"
-				echo "GIT branch: ${params.BRANCH}"
-				echo "Turn on/off Maven CheckStyle plugin: ${params.SKIP_CHECKSTYLE}"
-				echo "Turn on/off Maven unit tests: ${params.SKIP_TESTS}"				
-				echo "Sonar Quality Gate wait time (minutes): ${params.SONAR_QG_TIME_WAIT}"
-				"""
-			}			
-		}
-		// Set git parameters
-		stage("Set git") {
-			steps {
-				git branch: "${params.BRANCH}", credentialsId: 'jenkins-host-private-key', url: 'git@git.epam.com:oleksandr_frolov/spring-petclinic.git'
-			}
-		}
-		// Build Name
-		stage("Set Build Name") {
-			steps {
-				buildName "${env.BUILDTIME}_build#${env.BUILD_NUMBER}_${env.APP_NAME}_${env.VERSION}_build"
-			}			
-		}
-		// Maven
-		stage("Maven package") {
-			steps {
-				script {
-					if ("${params.SKIP_CHECKSTYLE}" == "true") {
-						withSonarQubeEnv('my-sonar') {
-							sh "mvn clean package -Dcheckstyle.skip -Dmaven.test.skip=${params.SKIP_TESTS}"
-						}	
-					} 
-					else {
-						withSonarQubeEnv('my-sonar') {
-							sh "mvn clean package -Dmaven.test.skip=${params.SKIP_TESTS}"
-						}
-					}
-				}
-			}			
-		}
-		// Sonar
-		stage("Sonar analysis") {
-			environment {
-				scanner_name = tool 'my-sonar'
-				project_name = "petclinic"
-			}
-			steps {
-				withSonarQubeEnv('my-sonar') {
-					sh """${scanner_name}/bin/sonar-scanner \
-					-Dsonar.projectKey=$project_name \
-					-Dsonar.java.binaries=./target/classes \
-					-Dsonar.sources=."""
-				}	
-			}			
-		}
-		stage("Sonar Quality Gate") {
-			steps {
-				timeout(time: "${params.SONAR_QG_TIME_WAIT}", unit: 'MINUTES') {
-					waitForQualityGate abortPipeline: true
-				}
-			}
-		}
-		// Artifactory
-		stage('Artifactory configuration') {
-			steps {
-				rtMavenDeployer (
-					id: "my-maven",
-					serverId: "my-artifactory",
-					releaseRepo: "PetClinicRep",
-					snapshotRepo: "PetClinicRep",
-					includePatterns: ["*.jar", "*.war"]
-				)
-				script {
-					if ("${params.SKIP_CHECKSTYLE}" == "true") {
-						rtMavenRun (
-							goals: "clean install -Dcheckstyle.skip -Dmaven.test.skip=${params.SKIP_TESTS}",
-							pom: "pom.xml",
-							deployerId: "my-maven"
-						)	
-					} 
-					else {
-						rtMavenRun (
-							goals: "clean install -Dmaven.test.skip=${params.SKIP_TESTS}",
-							pom: "pom.xml",
-							deployerId: "my-maven"
-						)
-					}
-				}							
-			} 				  				  
-		}
-		stage('Publish to Artifactory') {
-			steps {
-				rtPublishBuildInfo(
-					serverId: "my-artifactory"
-				)
-			}
-		}
-	}
-	post {
-		success {
-			// Create Archive
-			archiveArtifacts artifacts: 'target/*.jar'
-			// Run projectone_pet_clinic_deploy job by Parameterized Trigger plugin
-			build job: 'projectone_pet_clinic_deploy', wait: false, parameters: [string(name: 'DATA_BASE', value: String.valueOf(DATA_BASE))]
-		}
-		always {
-			// Email notification
-			emailext (
-				from: "jenkins.auto.mail.notification@gmail.com",
-				to: "sasha7692@gmail.com",
-				subject: "Job '${env.JOB_NAME}' '${env.BUILD_NUMBER}'", 
-				body: """Build status is '${currentBuild.currentResult}'.\nDetails by links:\n1) Jenkins log: '${env.BUILD_URL}consoleText';\n2) BlueOcean log: '${env.RUN_DISPLAY_URL}'"""
-			)	 
-		}
-	}	
+    agent {  label 'node1' }
+    options {
+        copyArtifactPermission('projectone_pet_clinic_deploy');
+    }
+    parameters {
+        // Choice of GIT branch parameter
+        gitParameter branchFilter: 'origin/(.*)', defaultValue: 'master', name: 'BRANCH', type: 'PT_BRANCH', description: 'GIT branch'
+        // Choice of DB for Parameterized Trigger plugin
+        choice(name: 'DB', choices: "H2\nMySQL\nMongoDB", description: 'Data base')
+    }
+    tools {
+        jdk 'openjdk-11'
+        maven 'my-maven'
+    }
+    environment {
+        BUILDTIME = "${sh(script:'date "+%Y-%m-%d %H:%M:%S"', returnStdout: true).trim()}"
+        APP_NAME = readMavenPom().getArtifactId()
+        VERSION = readMavenPom().getVersion()
+    }
+    stages { 
+        // Print pipeline parameters
+        stage("Print pipeline parameters") {
+            steps {
+                sh """
+                echo "Data base: ${params.DB}"
+                echo "GIT branch: ${params.BRANCH}"
+                echo "Turn on/off Maven CheckStyle plugin: ${params.SKIP_CHECKSTYLE}"
+                echo "Turn on/off Maven unit tests: ${params.SKIP_TESTS}"                
+                echo "Sonar Quality Gate wait time (minutes): ${params.SONAR_QG_TIME_WAIT}"
+                """
+            }            
+        }
+        // Check Data base version
+        stage("Check DB version") {
+            steps {
+                script {
+                    if ("${params.DB}" == "MongoDB") {
+                        input "The database you selected (${params.DB}) is not yet supported. Its support is expected in the next version."
+                    }
+                }
+            }
+        }
+        // Set git parameters
+        stage("Set git") {
+            steps {
+                git branch: "${params.BRANCH}", credentialsId: 'jenkins-host-private-key', url: 'git@git.epam.com:oleksandr_frolov/spring-petclinic.git'
+            }
+        }
+        // Build Name
+        stage("Set Build Name") {
+            steps {
+                buildName "${env.BUILDTIME}_build#${env.BUILD_NUMBER}_${env.APP_NAME}_${env.VERSION}_build"
+            }            
+        }
+        // Maven
+        stage("Maven package") {
+            steps {
+                script {
+                    if ("${params.SKIP_CHECKSTYLE}" == "true") {
+                        sh "mvn clean package -Dcheckstyle.skip -Dmaven.test.skip=${params.SKIP_TESTS}"
+                    } 
+                    else {
+                        sh "mvn clean package -Dmaven.test.skip=${params.SKIP_TESTS}"
+                    }
+                }
+            }            
+        }
+        // Sonar
+        stage("Sonar analysis") {
+            environment {
+                scanner_name = tool 'my-sonar'
+                project_name = "petclinic"
+            }
+            steps {
+                withSonarQubeEnv('my-sonar') {
+                    sh """${scanner_name}/bin/sonar-scanner \
+                    -Dsonar.projectKey=$project_name \
+                    -Dsonar.java.binaries=./target/classes \
+                    -Dsonar.sources=.
+                    """
+                }    
+            }            
+        }
+        stage("Sonar Quality Gate") {
+            steps {
+                timeout(time: "${params.SONAR_QG_TIME_WAIT}", unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+        // Artifactory
+        stage('Artifactory configuration') {
+            steps {
+                rtMavenDeployer (
+                    id: "my-maven",
+                    serverId: "my-artifactory",
+                    releaseRepo: "PetClinicRep",
+                    snapshotRepo: "PetClinicRep",
+                    includePatterns: ["*.jar", "*.war"]
+                )
+                script {
+                    if ("${params.SKIP_CHECKSTYLE}" == "true") {
+                        rtMavenRun (
+                            goals: "clean install -Dcheckstyle.skip -Dmaven.test.skip=${params.SKIP_TESTS}",
+                            pom: "pom.xml",
+                            deployerId: "my-maven"
+                        )    
+                    } 
+                    else {
+                        rtMavenRun (
+                            goals: "clean install -Dmaven.test.skip=${params.SKIP_TESTS}",
+                            pom: "pom.xml",
+                            deployerId: "my-maven"
+                        )
+                    }
+                }                            
+            }                                     
+        }
+        stage('Publish to Artifactory') {
+            steps {
+                rtPublishBuildInfo(
+                    serverId: "my-artifactory"
+                )
+            }
+        }
+    }
+    post {
+        success {
+            // Create Archive
+            archiveArtifacts artifacts: 'target/*.jar'
+            // Run projectone_pet_clinic_deploy job by Parameterized Trigger plugin
+            build job: 'projectone_pet_clinic_deploy', wait: false, parameters: [string(name: 'DATA_BASE', value: String.valueOf(DB))]
+        }
+        always {
+            // Email notification
+            emailext (
+                from: "jenkins.auto.mail.notification@gmail.com",
+                to: "sasha7692@gmail.com",
+                subject: "Job '${env.JOB_NAME}' '${env.BUILD_NUMBER}'", 
+                body: """Build status is '${currentBuild.currentResult}'.\nDetails by links:\n1) Jenkins log: '${env.BUILD_URL}consoleText';\n2) BlueOcean log: '${env.RUN_DISPLAY_URL}'"""
+            )     
+        }
+    }    
 }

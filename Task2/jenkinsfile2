@@ -1,80 +1,133 @@
 #!groovy
 pipeline {
-	agent {  label 'node2' }
-	parameters {
-		string(name: 'DATA_BASE')
-	}
-	tools {
-		jdk 'openjdk-11'
-	}
-	environment {
-		BUILDTIME = "${sh(script:'date "+%Y-%m-%d %H:%M:%S"', returnStdout: true).trim()}"
-		APP_NAME = readMavenPom().getArtifactId()
-		VERSION = readMavenPom().getVersion()
-	}
-	stages { 
-		// Build Name
-		stage("Set Build Name") {
-			steps {
-				buildName "${env.BUILDTIME}_build#${env.BUILD_NUMBER}_${env.APP_NAME}_${env.VERSION}_deploy"
-			}			
-		}
-		// Copy Artifact from build job
-		stage('Copy Artifact') {
-			steps {
-				script {
-					step ([$class: 'CopyArtifact',
-					projectName: 'projectone_pet_clinic_build',
-					filter: "**/target/*.jar",
-					target: 'Artifact']);
-				}
-			}
-		}
-		// Create Docker image
-		stage('Create Docker image') {
-			steps {
-				dir ('dockerfiles') {
-				    sh 'cp ../Artifact/target/*.jar .'
-				    sh "docker build -f Dockerfile_${DATA_BASE} -t petclinic:$BUILD_NUMBER ."
-				}
-			}
-		}
-		// Remove old Docker image
-		stage('Remove old Docker image') {
-			steps {
-				sh '''
-				if [ ! -z $(docker images -q petclinic:$(echo $BUILD_NUMBER-2 | bc)) ]; then 
-					docker rmi petclinic:$(echo $BUILD_NUMBER-2 | bc) 
-				fi
-				'''
-			}
-		}
-		// Stop and remove old Docker container
-		stage('Stop and remove old Docker container') {
-			steps {
-				sh '''
-				if [ "$(docker ps -aq -f name=petclinic$)" ]; then 
-					docker stop petclinic && docker rm petclinic 
-				fi
-				'''
-			}
-		}
-		// Run Docker image
-		stage('Run Docker image') {
-			steps {
-				sh 'docker run -d -p 8080:8080 --name petclinic petclinic:$BUILD_NUMBER'
-			}
-		}
-	}
-	post {
-		always {
-			// Email notification
-			emailext (
-				from: "jenkins.auto.mail.notification@gmail.com",
-				to: "sasha7692@gmail.com",
-				subject: "Job '${env.JOB_NAME}' '${env.BUILD_NUMBER}'", 
-				body: """Build status is '${currentBuild.currentResult}'.\nYou can visit petclinic by link: http://35.188.213.22:8080/"""
-			)	 
-		}
-	}
+    agent {  label 'node2' }
+    parameters {
+        string(name: 'DATA_BASE')
+    }
+    tools {
+        jdk 'openjdk-11'
+    }
+    environment {
+        BUILDTIME = "${sh(script:'date "+%Y-%m-%d %H:%M:%S"', returnStdout: true).trim()}"
+        APP_NAME = readMavenPom().getArtifactId()
+        VERSION = readMavenPom().getVersion()
+    }
+    stages { 
+        // Build Name
+        stage("Set Build Name") {
+            steps {
+                buildName "${env.BUILDTIME}_build#${env.BUILD_NUMBER}_${env.APP_NAME}_${env.VERSION}_deploy"
+            }            
+        }
+        // Run MySQL docker container
+        stage('Run MySQL') {
+            steps {
+                script {
+                    // Stop and remove old MySQL Docker container
+                    if ("${DATA_BASE}" == "MySQL") {
+                        sh '''
+                        if [ "$(docker ps -aq -f name=my_sql$)" ]; then 
+                            docker stop my_sql && docker rm my_sql 
+                        fi
+                        '''
+                        withVault(configuration: [timeout: 60], vaultSecrets: [[path: 'secrets/mysql', secretValues: [[vaultKey: 'mysql_user'], [vaultKey: 'mysql_password'], [vaultKey: 'mysql_root_password']]]]) {
+                            sh 'docker run -d -e MYSQL_USER=$mysql_user -e MYSQL_PASSWORD=$mysql_password -e MYSQL_ROOT_PASSWORD=$mysql_root_password -e MYSQL_DATABASE=petclinic --name my_sql -p 3306:3306 mysql:5.7.8'
+                        }
+                    } 
+                    else {
+                        sh 'echo "-"'
+                    }
+                }
+            }
+        }
+        // Copy Artifact from build job
+        stage('Copy Artifact') {
+            steps {
+                script {
+                    step ([$class: 'CopyArtifact',
+                    projectName: 'projectone_pet_clinic_build',
+                    filter: "**/target/*.jar",
+                    target: 'Artifact']);
+                }
+            }
+        }
+        // Create Docker image
+        stage('Create Docker image') {
+            steps {
+                dir ('dockerfiles') {
+                    sh 'cp ../Artifact/target/*.jar .'
+                    sh "docker build -f Dockerfile_${DATA_BASE} -t petclinic:$BUILD_NUMBER ."
+                }
+            }
+        }
+        // Remove old Docker image
+        stage('Remove old Docker image') {
+            steps {
+                sh '''
+                if [ ! -z $(docker images -q petclinic:$(echo $BUILD_NUMBER-2 | bc)) ]; then 
+                    docker rmi petclinic:$(echo $BUILD_NUMBER-2 | bc) 
+                fi
+                '''
+            }
+        }
+        // Stop and remove old Docker container
+        stage('Stop and remove old Docker container') {
+            steps {
+                sh '''
+                if [ "$(docker ps -aq -f name=petclinic$)" ]; then 
+                    docker stop petclinic && docker rm petclinic 
+                fi
+                '''
+            }
+        }
+        // Run Docker image
+        stage('Run Docker image') {
+            steps {
+                sh 'docker run -d -p 8080:8080 --name petclinic petclinic:$BUILD_NUMBER'
+            }
+        }
+        // Remove old GCP Docker image
+        stage('Remove old GCP Docker image') {
+            steps {
+                // Remove old Docker image from GCP Docker Registry
+                withEnv(["GCLOUD_PATH=$HOME/gcp_sdk/google-cloud-sdk/bin"]) {
+                    sh '''
+                    if $GCLOUD_PATH/gcloud container images list --repository=eu.gcr.io/bash-task | grep -q "petclinic"; then 
+                        $GCLOUD_PATH/gcloud container images delete eu.gcr.io/bash-task/petclinic:lts --force-delete-tags -q 
+                    fi
+                    '''                
+                }
+                // Remove old Docker image for GCP Docker Registry
+                sh '''
+                if [ ! -z $(docker images -q eu.gcr.io/bash-task/petclinic:lts) ]; then 
+                    docker rmi eu.gcr.io/bash-task/petclinic:lts 
+                fi
+                '''
+            }
+        }
+        // Push Docker image to GCP Docker Registry
+        stage('Push Docker image to GCP Docker Registry') {
+            steps {
+                // Set tag on Docker image
+                sh "docker tag petclinic:$BUILD_NUMBER eu.gcr.io/bash-task/petclinic:lts"
+                // Create access token
+                withEnv(["GCLOUD_PATH=$HOME/gcp_sdk/google-cloud-sdk/bin"]) {                    
+                    sh '$GCLOUD_PATH/gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://eu.gcr.io'
+                }
+                // Push Docker image to GCP Docker Registry
+                sh 'docker push eu.gcr.io/bash-task/petclinic'
+            }
+        }
+    }
+    post {
+        always {
+            // Email notification
+            emailext (
+                from: "jenkins.auto.mail.notification@gmail.com",
+                to: "sasha7692@gmail.com",
+                subject: "Job '${env.JOB_NAME}' '${env.BUILD_NUMBER}'", 
+                body: """Build status is '${currentBuild.currentResult}'.\nYou can visit petclinic by link: http://35.188.213.22:8080/"""
+            )     
+        }
+    }
 }
